@@ -1,0 +1,420 @@
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的可编辑网站</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            background-color: #f4f4f4;
+            padding: 1rem;
+            text-align: center;
+        }
+        main {
+            padding: 2rem;
+            position: relative;
+        }
+        .editable {
+            border: 1px dashed #ccc;
+            padding: 5px;
+            margin: 5px 0;
+            position: relative;
+        }
+        .editable:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        #adminButton, #editButton, #imageButton, #newParagraphButton, #newLinkButton {
+            position: fixed;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #adminButton {
+            top: 10px;
+            right: 10px;
+        }
+        #editButton {
+            top: 10px;
+            right: 100px;
+            display: none;
+        }
+        #imageButton {
+            top: 10px;
+            right: 190px;
+            display: none;
+        }
+        #newParagraphButton {
+            top: 10px;
+            right: 280px;
+            display: none;
+        }
+        #newLinkButton {
+            top: 10px;
+            right: 390px;
+            display: none;
+        }
+        #imageUpload {
+            display: none;
+        }
+        .resizable-image, .movable-button {
+            position: absolute;
+            border: 2px solid transparent;
+        }
+        .resizable-image.editable, .movable-button.editable {
+            cursor: move;
+        }
+        .resizable-image.editable:hover, .movable-button.editable:hover {
+            border-color: #007bff;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #007bff;
+            right: -5px;
+            bottom: -5px;
+            cursor: se-resize;
+            display: none;
+        }
+        .resizable-image.editable .resize-handle {
+            display: block;
+        }
+        .delete-button {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            line-height: 20px;
+            text-align: center;
+            cursor: pointer;
+            display: none;
+        }
+        .resizable-image.editable .delete-button,
+        .editable .delete-button,
+        .movable-button.editable .delete-button {
+            display: block;
+        }
+        .link-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 class="editable" contenteditable="false">欢迎来到我的可编辑网站</h1>
+    </header>
+    <main id="mainContent">
+        <p class="editable" contenteditable="false">这是我的网站内容。您可以点击"编辑"按钮来修改这些文本。</p>
+        <p class="editable" contenteditable="false">您可以添加更多的段落、修改现有内容，或者添加新的元素。</p>
+    </main>
+    <button id="adminButton">管理员模式</button>
+    <button id="editButton">编辑</button>
+    <button id="imageButton">添加图片</button>
+    <button id="newParagraphButton">添加新段落</button>
+    <button id="newLinkButton">添加链接按钮</button>
+    <input type="file" id="imageUpload" accept="image/*">
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminButton = document.getElementById('adminButton');
+            const editButton = document.getElementById('editButton');
+            const imageButton = document.getElementById('imageButton');
+            const newParagraphButton = document.getElementById('newParagraphButton');
+            const newLinkButton = document.getElementById('newLinkButton');
+            const imageUpload = document.getElementById('imageUpload');
+            const mainContent = document.getElementById('mainContent');
+            let isAdmin = false;
+            let isEditing = false;
+
+            // 设置管理员密码
+            const adminPassword = "A127108a@"; // 你可以更改这个密码
+
+            // 加载保存的内容
+            loadContent();
+
+            adminButton.addEventListener('click', function() {
+                const password = prompt("请输入管理员密码：");
+                if (password === adminPassword) {
+                    isAdmin = true;
+                    adminButton.style.display = 'none';
+                    editButton.style.display = 'block';
+                    alert("管理员模式已启用");
+                } else {
+                    alert("密码错误");
+                }
+            });
+
+            editButton.addEventListener('click', function() {
+                if (isAdmin) {
+                    isEditing = !isEditing;
+                    toggleEditMode();
+                }
+            });
+
+            function toggleEditMode() {
+                document.querySelectorAll('.editable').forEach(el => {
+                    el.contentEditable = isEditing;
+                    el.style.border = isEditing ? '1px dashed #ccc' : 'none';
+                    toggleDeleteButton(el, isEditing);
+                });
+                document.querySelectorAll('.resizable-image, .movable-button').forEach(el => {
+                    el.classList.toggle('editable', isEditing);
+                });
+                document.querySelectorAll('.link-button').forEach(el => {
+                    if (isEditing) {
+                        el.setAttribute('data-href', el.href);
+                        el.removeAttribute('href');
+                    } else {
+                        el.href = el.getAttribute('data-href');
+                    }
+                });
+                editButton.textContent = isEditing ? '保存' : '编辑';
+                imageButton.style.display = isEditing ? 'block' : 'none';
+                newParagraphButton.style.display = isEditing ? 'block' : 'none';
+                newLinkButton.style.display = isEditing ? 'block' : 'none';
+
+                if (!isEditing) {
+                    saveContent();
+                    console.log('内容已保存');
+                }
+            }
+
+            function toggleDeleteButton(element, show) {
+                let deleteButton = element.querySelector('.delete-button');
+                if (!deleteButton && show) {
+                    deleteButton = document.createElement('button');
+                    deleteButton.className = 'delete-button';
+                    deleteButton.textContent = 'X';
+                    deleteButton.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        element.remove();
+                        saveContent();
+                    });
+                    element.appendChild(deleteButton);
+                } else if (deleteButton) {
+                    deleteButton.style.display = show ? 'block' : 'none';
+                }
+            }
+
+            imageButton.addEventListener('click', function() {
+                imageUpload.click();
+            });
+
+            newParagraphButton.addEventListener('click', function() {
+                const newParagraph = document.createElement('p');
+                newParagraph.className = 'editable';
+                newParagraph.contentEditable = true;
+                newParagraph.textContent = '新段落';
+                toggleDeleteButton(newParagraph, true);
+                mainContent.appendChild(newParagraph);
+                newParagraph.focus();
+                saveContent();
+            });
+
+            newLinkButton.addEventListener('click', function() {
+                const url = prompt('请输入链接地址：', 'https://');
+                const text = prompt('请输入按钮文字：', '点击这里');
+                if (url && text) {
+                    const linkButton = document.createElement('a');
+                    linkButton.setAttribute('data-href', url);
+                    linkButton.className = 'link-button movable-button editable';
+                    linkButton.textContent = text;
+                    linkButton.target = '_blank'; // 在新标签页中打开链接
+                    linkButton.style.position = 'absolute';
+                    linkButton.style.left = '0px';
+                    linkButton.style.top = '0px';
+                    toggleDeleteButton(linkButton, true);
+                    mainContent.appendChild(linkButton);
+                    makeMovable(linkButton);
+                    saveContent();
+                }
+            });
+
+            imageUpload.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        createImageElement(e.target.result);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // 使用事件委托处理删除操作
+            mainContent.addEventListener('click', function(e) {
+                if (e.target.classList.contains('delete-button') && isEditing) {
+                    const element = e.target.closest('.editable, .resizable-image, .movable-button');
+                    if (element) {
+                        mainContent.removeChild(element);
+                        saveContent();
+                    }
+                }
+            });
+
+            function createImageElement(src) {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'resizable-image editable';
+                imgContainer.style.left = '0px';
+                imgContainer.style.top = '0px';
+                
+                const img = document.createElement('img');
+                img.src = src;
+                img.style.width = '200px';
+                img.style.height = 'auto';
+                
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-button';
+                deleteButton.textContent = 'X';
+                
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(resizeHandle);
+                imgContainer.appendChild(deleteButton);
+                mainContent.appendChild(imgContainer);
+                
+                makeResizableAndDraggable(imgContainer);
+                saveContent();
+            }
+
+            function makeResizableAndDraggable(element) {
+                const img = element.querySelector('img');
+                const resizeHandle = element.querySelector('.resize-handle');
+                let isResizing = false;
+                let isDragging = false;
+                let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+                resizeHandle.addEventListener('mousedown', initResize, false);
+                element.addEventListener('mousedown', initDrag, false);
+                document.addEventListener('mousemove', doDragResize, false);
+                document.addEventListener('mouseup', stopDragResize, false);
+
+                function initResize(e) {
+                    if (!isEditing) return;
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = img.offsetWidth;
+                    startHeight = img.offsetHeight;
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                function initDrag(e) {
+                    if (!isEditing || e.target !== img) return;
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startLeft = element.offsetLeft;
+                    startTop = element.offsetTop;
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                function doDragResize(e) {
+                    if (isResizing && isEditing) {
+                        const width = startWidth + e.clientX - startX;
+                        const height = startHeight + e.clientY - startY;
+                        img.style.width = width + 'px';
+                        img.style.height = height + 'px';
+                        element.style.width = width + 'px';
+                        element.style.height = height + 'px';
+                    } else if (isDragging && isEditing) {
+                        const left = startLeft + e.clientX - startX;
+                        const top = startTop + e.clientY - startY;
+                        element.style.left = left + 'px';
+                        element.style.top = top + 'px';
+                    }
+                }
+
+                function stopDragResize() {
+                    if (isResizing || isDragging) {
+                        saveContent();
+                    }
+                    isResizing = false;
+                    isDragging = false;
+                }
+            }
+
+            function makeMovable(element) {
+                let isDragging = false;
+                let startX, startY, startLeft, startTop;
+
+                element.addEventListener('mousedown', initDrag, false);
+                document.addEventListener('mousemove', doDrag, false);
+                document.addEventListener('mouseup', stopDrag, false);
+
+                function initDrag(e) {
+                    if (!isEditing) return;
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startLeft = element.offsetLeft;
+                    startTop = element.offsetTop;
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                function doDrag(e) {
+                    if (isDragging && isEditing) {
+                        const left = startLeft + e.clientX - startX;
+                        const top = startTop + e.clientY - startY;
+                        element.style.left = left + 'px';
+                        element.style.top = top + 'px';
+                    }
+                }
+
+                function stopDrag() {
+                    if (isDragging) {
+                        saveContent();
+                    }
+                    isDragging = false;
+                }
+            }
+
+            function saveContent() {
+                const content = mainContent.innerHTML;
+                localStorage.setItem('websiteContent', content);
+            }
+
+            function loadContent() {
+                const savedContent = localStorage.getItem('websiteContent');
+                if (savedContent) {
+                    mainContent.innerHTML = savedContent;
+                    document.querySelectorAll('.resizable-image').forEach(el => {
+                        makeResizableAndDraggable(el);
+                    });
+                    document.querySelectorAll('.movable-button').forEach(el => {
+                        makeMovable(el);
+                    });
+                    document.querySelectorAll('.editable, .link-button').forEach(el => {
+                        toggleDeleteButton(el, false);
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
